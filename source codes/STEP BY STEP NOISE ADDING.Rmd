@@ -1,0 +1,148 @@
+---
+title: "NOISE ADDING"
+author: "Stanley Sayianka"
+date: "6/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+```
+
+Assuming we have dataa about suicide rates in a given country, and we would wish to establish a relationship between suicide rates and GDP per capita (Living standards of people).
+
+The following visualization helps explain the relationship more precisely:
+
+```{r startyer}
+library(pacman)
+p_load(ggplot2, plotly, dplyr)
+
+x <- seq(0, 1, length=300)
+set.seed(27)
+y <- (2*x)+4+rnorm(300, sd=.3)
+dd <- cbind(x, y) %>% data.frame()
+colnames(dd) <- c("x", "y")
+
+dd <- filter(dd, y >= 5 & y <= 5.5)
+
+p <- ggplot(data=dd)+geom_point(aes(x=x, y=y))+
+  geom_smooth(aes(x=x, y=y), method="lm", se=T)+
+  labs(title="SUICIDE RATES AND GDP PR CAPITA",
+       x="GDP per Capita", y="Suicide rates")
+ggplotly(p)
+```
+
+
+It is evident that a linear relationship exists and the model is given as shown below:
+
+```{r, moo}
+summary(lm(y~x, data=dd))
+```
+
+
+Assuming we want to use the model to predict the suicide rates in a certain region with GDP per capita of 0.63, we will use the regression model as follows:
+
+Suicide rates = 5.00288(the slope) + 0.37469(the intercept)
+Thus
+Suicide rates = 5.00288(the slope) + 0.37469(0.63) = 5.2389347
+
+```{r, show1}
+p <- p + geom_vline(xintercept = .63) +
+  geom_hline(yintercept = (.63*.37469)+5.00288)+
+  geom_point(aes(x=.63, y=(.63*.37469)+5.00288), 
+             shape=21, color="black", fill="#69b3a2", size=5)
+ggplotly(p)
+```
+
+Then the suicide rates reported is 5.2389347 **ignore the numbers**
+
+Suppose we want to add noise to the final output (that is, we add noise in order to account for the unexplained variation by regression model).
+
+We will first start by calculating the distance from this predicted point, to all the other points in the dataset, as shown:
+
+```{r,noiseadd}
+ddn <- rbind(data.frame(x=.63, y=((.63*.37469)+5.00288)), dd)
+names(ddn) <- c("x", "y")
+#ddn <- rbind(ddn, dd)
+
+n <- nrow(ddn) - 1
+new_data <- data.frame(X = c(rep(ddn$x[1], n), ddn$x[-1]),
+                       Y = c(rep(ddn$y[1], n), ddn$y[-1]))
+new_data$grp <- as.factor(rep(1:n, times = 2))
+
+library(ggplot2)
+pp <- ggplot(new_data, aes(X, Y, group = grp)) + 
+  geom_point() + geom_line()+
+  geom_abline(intercept = 5.0028, slope = .37469, col="blue", lwd=1.2)
+ggplotly(pp)
+```
+
+
+We may for example be only interested in the noise adding from only five of its nearest neighbours, so, just to zoom in and check the 5 nearest neighbors:
+
+```{r, zooom}
+xxn <- c(.632107023, .615385615, .645484950, .622073579, 
+         .612040134)
+yyn <- c(5.328184, 5.206861, 5.116005, 5.414122, 5.044221)
+dn <- cbind(xxn, yyn) %>%
+  data.frame()
+colnames(dn) <- c("x", "y")
+
+ddn <- rbind(data.frame(x=.63, y=((.63*.37469)+5.00288)), dn)
+
+
+n <- nrow(ddn) - 1
+new_data <- data.frame(X = c(rep(ddn$x[1], n), ddn$x[-1]),
+                       Y = c(rep(ddn$y[1], n), ddn$y[-1]))
+new_data$grp <- as.factor(rep(1:n, times = 2))
+
+
+pp <- ggplot(new_data, aes(X, Y, group = grp)) + 
+  geom_point() + geom_line()+
+  geom_abline(intercept = 5.0028, slope = .37469, col="blue", lwd=1.2)+
+  labs(title = "ZOOMING IN")
+ggplotly(pp)
+
+```
+
+Once we get the five nearest neighbors, we then find their residuals or the error terms **explain this using slide further**
+
+We then average the residuals and add the to the final output of the regression model as shown:
+
+```{r, looka}
+dmod <- lm(y~x, data = dd)
+ppp <- predict(dmod, dn)
+
+new_data$l <- c(rep(NA, 5), new_data[6:10, 2]-ppp)
+
+pp <- ggplot(new_data, aes(X, Y, group = grp, label=l)) + 
+  geom_point() + geom_line()+
+  geom_abline(intercept = 5.0028, slope = .37469, col="blue", lwd=1.2)+
+  geom_text()+
+  labs(title="ZOOMING IN")
+ggplotly(pp)
+```
+
+
+We average the residuals as follows:
+
+```{r, av}
+print(paste("The residuals: ", new_data[6:10, 4]))
+print("*********************************************")
+print(paste("their average is: ", mean(new_data[6:10, 4])))
+```
+
+We now add their average to the predicted value by the regression model which was:
+
+```{r, add}
+print(paste("The final value is", -0.0153380691103486+5.2389347))
+```
+
+
+**PA PA PA PA**
+
+
+
+
+
+
